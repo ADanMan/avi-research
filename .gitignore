@@ -1,0 +1,25 @@
+# Data files
+data/raw/*
+data/processed/*
+data/results/*
+!data/**/.gitkeep
+
+# Environment
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
