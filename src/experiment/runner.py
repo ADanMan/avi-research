@@ -4,8 +4,10 @@ Experiment Runner
 Runs complete experiment: baseline + AVI, collects all metrics
 """
 
+import os
 import time
 import asyncio
+from pathlib import Path
 from typing import Dict, List, Any, Optional
 import pandas as pd
 import httpx
@@ -19,9 +21,9 @@ class ExperimentRunner:
 
     def __init__(
         self,
-        avi_api_url: str,
-        avi_api_key: str,
-        test_model: str = "cotype-2.5-pro",
+        avi_api_url: Optional[str] = None,
+        avi_api_key: Optional[str] = None,
+        test_model: Optional[str] = None,
         test_api_base: Optional[str] = None,
         test_api_key: Optional[str] = None,
     ):
@@ -35,12 +37,16 @@ class ExperimentRunner:
             test_api_base: API base for test model
             test_api_key: API key for test model
         """
-        self.avi_url = avi_api_url.rstrip('/')
-        self.avi_api_key = avi_api_key
+        # Get values from params or environment variables
+        self.avi_url = (avi_api_url or os.getenv("AVI_API_URL", "http://localhost:8000")).rstrip('/')
+        self.avi_api_key = avi_api_key or os.getenv("AVI_API_KEY")
+        
+        if not self.avi_api_key:
+            raise ValueError("AVI_API_KEY must be provided or set in environment")
 
-        self.test_model = test_model
-        self.test_api_base = test_api_base
-        self.test_api_key = test_api_key
+        self.test_model = test_model or os.getenv("COTYPE_MODEL", "cotype-2.5-pro")
+        self.test_api_base = test_api_base or os.getenv("COTYPE_API_BASE")
+        self.test_api_key = test_api_key or os.getenv("COTYPE_API_KEY")
 
         self.evaluator = AutomaticEvaluator()
         self.judge = LLMJudge()
@@ -180,11 +186,23 @@ class ExperimentRunner:
         client: httpx.AsyncClient,
         query: str,
     ) -> str:
-        """Query baseline (unfiltered) model"""
-        # This depends on your baseline setup
-        # For now, returns placeholder
-        # TODO: Implement actual baseline query
-        return f"[Baseline response to: {query}]"
+        """Query baseline (unfiltered) model - direct Cotype without AVI"""
+        
+        # Используем LLMClient для запроса к Cotype
+        from ..utils.llm_client import LLMClient
+        
+        baseline_llm = LLMClient(
+            provider="cotype",
+            model=self.test_model,
+            api_key=self.test_api_key,
+            api_base=self.test_api_base,
+            temperature=0.7,
+            max_tokens=2000,
+        )
+        
+        # Простой запрос без фильтрации
+        response = baseline_llm.generate(query)
+        return response
 
     async def _query_avi(
         self,
@@ -209,3 +227,60 @@ class ExperimentRunner:
         response.raise_for_status()
 
         return response.json()
+    
+    async def run_queries_only(
+        self,
+        test_queries_df: pd.DataFrame,
+        show_progress: bool = True,
+    ) -> pd.DataFrame:
+        """
+        Прогон только запросов (без LLM Judge)
+        Используется когда нужен другой VPN для Judge
+        """
+        print(f"📊 Прогон {len(test_queries_df)} запросов...")
+        print()
+
+        results = []
+        iterator = test_queries_df.iterrows()
+        
+        if show_progress:
+            from tqdm import tqdm
+            iterator = tqdm(list(iterator), desc="Queries")
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            for idx, row in iterator:
+                # Baseline
+                baseline_start = time.time()
+                baseline_response = await self._query_baseline(client, row['query'])
+                baseline_latency = (time.time() - baseline_start) * 1000
+
+                # AVI
+                avi_start = time.time()
+                avi_response = await self._query_avi(client, row['query'])
+                avi_latency = (time.time() - avi_start) * 1000
+
+                # Automatic metrics
+                auto_metrics = self.evaluator.evaluate_single_query(
+                    query=row['query'],
+                    expected_answer=row['expected_answer'],
+                    system_response=avi_response['response'],
+                    filter_result=avi_response.get('input_filter_result', {}),
+                    latency_ms=avi_latency,
+                )
+
+                result = {
+                    'query_id': row.get('id', f"query_{idx}"),
+                    'query': row['query'],
+                    'expected_answer': row['expected_answer'],
+                    'policy': row.get('policy', ''),
+                    'company': row.get('company', ''),
+                    'baseline_response': baseline_response,
+                    'baseline_latency_ms': baseline_latency,
+                    'avi_response': avi_response['response'],
+                    'avi_latency_ms': avi_latency,
+                    **auto_metrics,
+                }
+
+                results.append(result)
+
+        return pd.DataFrame(results)

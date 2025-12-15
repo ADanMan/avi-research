@@ -17,11 +17,10 @@ from pathlib import Path
 import pandas as pd
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from transform.dataset_builder import DatasetBuilder
-from utils.helpers import ensure_dir
-
+from src.transform.dataset_builder import DatasetBuilder
+from src.utils.helpers import ensure_dir
 
 def main():
     print("=" * 60)

@@ -4,8 +4,9 @@ LLM-as-a-Judge Evaluator
 Uses LLM to evaluate quality of AVI responses
 """
 
+import os
 import json
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from ..utils.llm_client import LLMClient
 from ..utils.helpers import load_prompts, format_prompt
 
@@ -15,19 +16,21 @@ class LLMJudge:
 
     def __init__(
         self,
-        model: str = "gpt-4o-mini",
+        model: Optional[str] = None,
         prompts_config: str = "config/llm_prompts.yaml",
     ):
         """
         Initialize LLM Judge
 
         Args:
-            model: Model to use for judging
+            model: Model to use for judging (default: from env or gpt-4o-mini)
             prompts_config: Path to prompts YAML
         """
+        judge_model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        
         self.llm = LLMClient(
             provider="openai",
-            model=model,
+            model=judge_model,
             temperature=0.0,  # Deterministic for reproducibility
             max_tokens=1000,
         )

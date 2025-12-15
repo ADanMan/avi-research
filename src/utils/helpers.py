@@ -2,6 +2,7 @@
 Helper utilities for research toolkit
 """
 
+import os
 import re
 import json
 from pathlib import Path
@@ -165,6 +166,24 @@ class ExperimentConfig:
                 return default
 
         return value
+    
+    def get_with_env(self, key: str, env_var: str, default: Any = None) -> Any:
+        """
+        Get config value with fallback to environment variable
+        
+        Args:
+            key: Config key using dot notation
+            env_var: Environment variable name
+            default: Default value if neither config nor env is set
+            
+        Returns:
+            Value from config, or env, or default
+        """
+        value = self.get(key)
+        if value is not None:
+            return value
+        
+        return os.getenv(env_var, default)
 
     def __getitem__(self, key: str) -> Any:
         return self.get(key)

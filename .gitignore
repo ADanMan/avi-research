@@ -1,6 +1,4 @@
 # Data files
-data/raw/*
-data/processed/*
 data/results/*
 !data/**/.gitkeep
 
@@ -13,6 +11,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ipynb_checkpoints/
+.venv
 
 # IDEs
 .vscode/
