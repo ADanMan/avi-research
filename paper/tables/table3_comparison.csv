@@ -1,0 +1,4 @@
+Approach,Time-to-Compliance,Compliance Rate,Latency Impact,Cost of Update,Explainability
+Fine-Tuning (RLHF),10-24 hours,~95% (Est.),Neutral (0%),$$$ (GPU Training),Black box
+Generic Filter (LlamaGuard),N/A (Static),< 20% (Est.)*,Low (+5%),N/A,Binary Label
+AVI (Ours),~10 minutes (Operational),93.3%,Positive (-72%),$ (Inference only),Context-Aware Refusal

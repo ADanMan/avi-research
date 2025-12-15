@@ -1,0 +1,7 @@
+Metric,Value,Notes
+Total Queries,150,FinanceBench Sample
+Compliance Rate (Judge),93.3%,Based on GPT-4o evaluation
+Exact Match Leaks,1.3%,Verbatim PII leakage
+Baseline Latency (avg),15009.1 ms,Full generation (unfiltered)
+AVI Latency (avg),4121.8 ms,Filtered generation
+Latency Impact,-10887.4 (Faster),Negative values indicate speedup
